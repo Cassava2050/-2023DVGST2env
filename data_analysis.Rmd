@@ -278,6 +278,13 @@ single_var_comp <- obj$resum_fitted_model[ ,c(1:2, 5:6)] %>%
   mutate(across(where(is.double), round, 3))
 
 master_data[["single_var_comp"]] <- single_var_comp 
+
+varcomp_root_rot <- 
+  as.data.frame(obj$fitted_models$root_rot_number$`202394DVGST_momi`$mRand$root_rot_number$var.comp) %>% 
+  mutate(across(where(is.double), round, 2)) %>% rownames_to_column("model_term")
+
+colnames(varcomp_root_rot) <- c("model_term", "varcomp")
+varcomp_root_rot %>% write.table("clipboard", col.names = T, row.names = F, sep = "\t")
 ```
 
 
@@ -523,19 +530,14 @@ blupDF_kp <- read_excel(
 ## Selection index
 
 ```{r}
-genotypes <- my_dat %>% 
-  filter(trial_name %in% c("202325LAEAR_saha", 
-                           "202323LAEAR_repe", 
-                           "202324LAEAR_stom")) %>% 
-  distinct(accession_name) %>% pull()
-
 colnames(blupDF_kp)
 
 index_traits <- c("DM_gravity", "height_1st_branch", "yield_ha", "germination_perc")
 
 index_dat <- blupDF_kp %>%
-  select("accession_name", all_of(index_traits)) %>% 
-  filter(accession_name %in% all_of(genotypes))
+  select("accession_name", all_of(index_traits)) %>%
+  filter(DM_gravity > 22, height_1st_branch > 80, yield_ha > 15, germination_perc > 80)
+  drop_na()
 ```
 
 ## Selection index function
@@ -603,7 +605,7 @@ selIndex <- function (Y, b, scale = FALSE)
 
 ```{r}
 
-res.pca <- pca_index(data = index_dat, id = "accession_name", b = c(10, 10, 10, 10), percentage = 0.50)
+res.pca <- pca_index(data = index_dat, id = "accession_name", b = c(10, 10, 15, 10), percentage = 0.60)
 res.pca_final <- res.pca$final
 res.pca_final
 ggsave(paste("images/selection",  trial_interest, ".png"), plot = res.pca_final, units = "in", dpi = 300, width = 10, height = 10)
@@ -612,6 +614,15 @@ selections <- res.pca$results %>% rownames_to_column(var = "accession_name")
 selections %>% 
   select(accession_name, index, everything()) %>% 
   write.table("clipboard", sep = "\t", col.names = T, row.names = F)
+```
+
+# Selection statistics
+```{r}
+multiple.func <- function(x) {
+  c(min = min(x, na.rm = T), max = max(x, na.rm = T), mean = mean(x, na.rm = T), median = median(x, na.rm = T))
+}
+  
+sapply(selections[, c("DM_gravity", "height_1st_branch", "yield_ha", "germination_perc")], multiple.func)
 ```
 
 ## Add index column to BLUEs_BLUPs_MET
@@ -632,4 +643,10 @@ master_data[["BLUEs_BLUPs_MET"]] = BLUEs_BLUPs
 ```{r}
 folder_output <- here::here("output//")
 meta_file_name <- paste0(folder_output, paste("2023", trial_interest, "master_results", Sys.Date(), ".xlsx", sep = "_"))
+
+grep("^BLUP_BLUE_root_number_commercial", names(master_data))
+names(master_data)[23] <- "BLUP_BLUE_root_commercial"
+
 write.xlsx(master_data, file = meta_file_name)
+```
+
