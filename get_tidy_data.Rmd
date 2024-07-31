@@ -65,7 +65,8 @@ local_file <- "yes"
 if (local_file == "yes") {
   folder <- here::here("data//")
   files <- c("phenotype(49).csv",
-             "phenotype(50).csv"
+             "phenotype(50).csv",
+             "phenotype(51).csv"
              )
   skip_col <- 3 # double check the number of col skipped
   trial_interest <- "DVGST"
@@ -252,7 +253,8 @@ plants_harvested$use_trial_name %>% unique()
 trial_standard_new <- trial_standard %>%
   mutate(obs_harvest_number_plan =
            case_when(str_detect(use_trial_name, "202393") ~ 4,
-                     str_detect(use_trial_name, "202394") ~ 4
+                     str_detect(use_trial_name, "202394") ~ 4,
+                     str_detect(use_trial_name, "202395") ~ 2
                      ),
          obs_germination_perc = obs_germinated_number_plot/obs_planted_number_plot * 100,
          # 2) calculate area per plant
@@ -261,6 +263,8 @@ trial_standard_new <- trial_standard %>%
          obs_yield_ha_v2 = (((obs_root_weight_plot*10000)/(area_plant*obs_harvest_number_plan))/1000),
          obs_DM_yield_ha = obs_DM_gravity * obs_yield_ha / 100
         )
+
+trial_standard_new <- trial_standard_new %>% mutate(obs_ave_WAB = rowMeans(select(trial_standard_new, obs_WAB_30min_10mon:obs_WAB_20min_10mon)))
 # 
 # trial_standard %>% filter(use_trial_name == "202319LAPRC_saha") %>% select(use_plot_name, obs_planted_number_plot, obs_germinated_number_plot)
 ```
