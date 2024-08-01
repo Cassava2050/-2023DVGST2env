@@ -39,7 +39,7 @@ sel_file = list_file[str_detect(list_file, "_tidy_data4analysis_") &
 
 sel_file
 # the data we will use
-sel_file_use = sel_file[1]
+sel_file_use = sel_file[2]
 
 sel_file_use
 trial1_tidy = read.csv(here::here("output", sel_file_use), header=TRUE,
@@ -61,7 +61,7 @@ trait_all <-
 trait_all_adj <- gsub("obs_", "", trait_all$analysis_col_name)
 trait_all_adj = c(trait_all_adj,
                   "harvest_number_plan", "germination_perc",
-                  "yield_ha_v2", "DM_yield_ha", "starch_content")
+                  "yield_ha_v2", "DM_yield_ha", "starch_content", "ave_WAB")
 trait_all_adj <- gsub("-", "_", trait_all_adj)
 ```
 
@@ -164,6 +164,7 @@ ggsave(paste('images\\shared_', trial_interest, ".png", sep = "_"),
        plot = shared, units = "in", dpi = 300, width = 8, height = 6)
   
 summary <- results$summ_traits 
+results$exp_design_resum
 
 p1 <- summary %>% 
   ggplot(aes(x = traits , y = trial_name, label = round(miss_perc,2),  fill = miss_perc ))+
@@ -291,6 +292,27 @@ varcomp_root_rot %>% write.table("clipboard", col.names = T, row.names = F, sep 
 ## Multi environmetal analysis
 
 ```{r}
+my_dat <- trial_rm_sd %>% 
+  filter(!trial_name == "202395DVGST_ciat") %>% 
+  add_column(block = NA) %>% mutate(block = as.factor(block))
+
+results <- check_design_met(
+  data = my_dat,
+  genotype = "accession_name",
+  trial = "trial_name",
+  traits = trait_ideal,
+  rep = "rep_number",
+  col = "col_number",
+  row = "row_number",
+  block = "block"
+)
+
+
+obj <- single_trial_analysis(results = results,
+                             progress = TRUE,
+                             remove_outliers = FALSE)
+
+
 # several trials
 met_results <- met_analysis(obj, 
                             filter_traits = 
@@ -298,8 +320,7 @@ met_results <- met_analysis(obj,
                                                               "root_rot_number"
                                                               )],
                             h2_filter = 0.1,
-                            progress = TRUE 
-                            #vcov = "fa2"
+                            progress = TRUE
                             )
 
 
@@ -321,6 +342,16 @@ BLUPs_table <-
   rename("accession_name" = genotype) %>% 
   mutate(across(where(is.numeric), round, 2)) %>% 
   ungroup() 
+
+# bind the single estimates from CIAT
+CIAT_BLUEs <- master_data$BLUP_BLUE_202395DVGST_ciat %>% select(genotype, starts_with("BLUEs_"))
+
+CIAT_BLUEs_cq <- CIAT_BLUEs %>% select(genotype, BLUEs_WAB_20min_10mon:BLUEs_ave_WAB)
+
+CIAT_BLUPs <- master_data$BLUP_BLUE_202395DVGST_ciat %>% select(genotype, starts_with("BLUPs_"))
+
+CIAT_BLUPs_cq <- CIAT_BLUPs %>% select(genotype, BLUPs_WAB_20min_10mon:BLUPs_ave_WAB)
+
 #save the BLUPs data
 master_data[[paste0("BLUPs_", "gxe")]] <- BLUPs_table
 ```
